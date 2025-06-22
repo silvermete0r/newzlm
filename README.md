@@ -51,6 +51,7 @@ This project is built with:
 - Python
 - LLaMa 3 (`llama-3.3-70b-versatile` & `llama-3.1-8b-instant`)
 - NewsAPI
+- Groq API (fast inference with LLaMa 3)
 - Google Translate API
 
 ## Credits
