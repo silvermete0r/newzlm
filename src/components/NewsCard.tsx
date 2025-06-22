@@ -1,4 +1,3 @@
-
 import { Clock, TrendingUp, Edit } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -42,9 +41,21 @@ const NewsCard = ({ article, showEditButton = true }: NewsCardProps) => {
     }))}`);
   };
 
+  // When user clicks the news block, open editorial with article data
+  const handleCardClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    navigate(`/editor/new?source=${encodeURIComponent(JSON.stringify({
+      title: article.title,
+      description: article.excerpt,
+      url: article.url,
+      source: article.source,
+      content: article.content
+    }))}`);
+  };
+
   return (
     <div className="group relative">
-      <Link to={`/article/${article.id}`} className="block">
+      <div onClick={handleCardClick} className="block cursor-pointer">
         <div className="bg-white border border-gray-200 rounded-lg p-6 hover:border-black hover:shadow-lg transition-all duration-300">
           <div className="flex items-center justify-between mb-3">
             <span className="text-sm text-gray-500 font-roboto">{article.category}</span>
@@ -77,7 +88,7 @@ const NewsCard = ({ article, showEditButton = true }: NewsCardProps) => {
             )}
           </div>
         </div>
-      </Link>
+      </div>
       
       {showEditButton && (
         <Button

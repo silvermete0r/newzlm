@@ -1,11 +1,18 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Save, Send, Download, Eye, Instagram, MessageCircle, Send as TelegramIcon, Sparkles, Wand2 } from "lucide-react";
+import { Save, Send, Download, Eye, Instagram, MessageCircle, Send as TelegramIcon, Sparkles, Wand2, ExternalLink } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { generateArticleWithAI } from "@/services/newsService";
+import { jsPDF } from "jspdf"; 
+import { marked } from "marked"; 
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+
+const LOCAL_STORAGE_KEY = "newzlm:drafts";
+const SUBMITTED_STORAGE_KEY = "newzlm:submitted";
 
 const Editor = () => {
   const { id } = useParams();
@@ -18,6 +25,26 @@ const Editor = () => {
   const [isPreview, setIsPreview] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [sourceArticle, setSourceArticle] = useState<any>(null);
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareText, setShareText] = useState("");
+  const [sharePlatform, setSharePlatform] = useState("");
+  const shareTextareaRef = useRef<HTMLTextAreaElement>(null);
+  const [sourceLink, setSourceLink] = useState("");
+  const [sourceLinkType, setSourceLinkType] = useState<"none" | "website" | "youtube">("none");
+
+  // Detect link type
+  useEffect(() => {
+    if (!sourceLink) {
+      setSourceLinkType("none");
+    } else if (/^(https?:\/\/)?(www\.)?(youtube\.com|youtu\.be)\//i.test(sourceLink)) {
+      setSourceLinkType("youtube");
+    } else if (/^https?:\/\//i.test(sourceLink)) {
+      setSourceLinkType("website");
+    } else {
+      setSourceLinkType("none");
+    }
+  }, [sourceLink]);
 
   // Load source article if coming from news
   useEffect(() => {
@@ -27,6 +54,8 @@ const Editor = () => {
         const source = JSON.parse(decodeURIComponent(sourceParam));
         setSourceArticle(source);
         setTitle(source.title || "");
+        // If the source has a URL, set it as the link input value
+        if (source.url) setSourceLink(source.url);
         setContent(`# ${source.title || ""}
 
 ${source.description || ""}
@@ -46,8 +75,17 @@ ${source.content || source.description || "Please provide more details about thi
       }
     } else if (id && id !== "new") {
       // Load existing draft
-      setTitle("AI Impact on Central Asian Education");
-      setContent(`# AI Impact on Central Asian Education
+      // Try to load from localStorage
+      const drafts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
+      const found = drafts.find((d: any) => String(d.id) === String(id));
+      if (found) {
+        setTitle(found.title);
+        setContent(found.content);
+        setDraftId(found.id);
+      } else {
+        // Fallback to default content
+        setTitle("AI Impact on Central Asian Education");
+        setContent(`# AI Impact on Central Asian Education
 
 The educational landscape across Central Asia is undergoing a revolutionary transformation as artificial intelligence technologies reshape traditional learning methodologies.
 
@@ -79,17 +117,43 @@ The integration of AI in education presents both challenges and opportunities:
 As Central Asian nations continue to embrace digital transformation, the role of AI in education is expected to expand significantly, potentially positioning the region as a leader in innovative educational technologies.
 
 *This article was generated using NewzLM's AI assistance and reviewed by our editorial team.*`);
+      }
     }
   }, [id, searchParams]);
 
+  // Save draft to localStorage
   const handleSave = () => {
+    const drafts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
+    let newDraft;
+    if (draftId) {
+      newDraft = { id: draftId, title, content, updated: Date.now() };
+      const idx = drafts.findIndex((d: any) => d.id === draftId);
+      if (idx !== -1) drafts[idx] = newDraft;
+      else drafts.push(newDraft);
+    } else {
+      newDraft = { id: Date.now().toString(), title, content, updated: Date.now() };
+      drafts.push(newDraft);
+      setDraftId(newDraft.id);
+    }
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(drafts));
     toast({
       title: "Draft Saved",
       description: "Your article has been saved as a draft.",
     });
   };
 
+  // Submit for review (move to submitted storage)
   const handleSubmit = () => {
+    // Remove from drafts
+    let drafts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
+    if (draftId) {
+      drafts = drafts.filter((d: any) => d.id !== draftId);
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(drafts));
+    }
+    // Add to submitted
+    const submitted = JSON.parse(localStorage.getItem(SUBMITTED_STORAGE_KEY) || "[]");
+    submitted.unshift({ id: draftId || Date.now().toString(), title, content, submitted: Date.now() });
+    localStorage.setItem(SUBMITTED_STORAGE_KEY, JSON.stringify(submitted));
     toast({
       title: "Submitted for Review",
       description: "Your article has been submitted for moderation.",
@@ -97,11 +161,48 @@ As Central Asian nations continue to embrace digital transformation, the role of
     navigate("/dashboard");
   };
 
+  // PDF Export and Social Export with editable popup
   const handleExport = (platform: string) => {
-    toast({
-      title: `Exported for ${platform}`,
-      description: `Article formatted and ready for ${platform} publishing.`,
-    });
+    if (platform === "PDF") {
+      const doc = new jsPDF();
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(14);
+      doc.text(title, 10, 20);
+      doc.setFontSize(11);
+      // Simple markdown to plain text for PDF
+      const plain = content.replace(/[#*_`>-]/g, "");
+      doc.text(plain, 10, 30, { maxWidth: 180 });
+      doc.save(`${title.replace(/\s+/g, "_")}.pdf`);
+      toast({
+        title: "Exported for PDF",
+        description: "Article downloaded as PDF.",
+      });
+      return;
+    }
+    // Social media export
+    let exportText = "";
+    let hashtags = "";
+    if (platform === "Instagram" || platform === "Threads") {
+      hashtags = "#news #journalism #CentralAsia #AI #NewzLM";
+      exportText = `${title}\n\n${content.split("\n").slice(0, 10).join("\n")}\n\n${hashtags}`;
+    } else if (platform === "Telegram") {
+      hashtags = "#news #CentralAsia #AI";
+      exportText = `📰 ${title}\n\n${content.split("\n").slice(0, 10).join("\n")}\n\n${hashtags}`;
+    }
+    setShareText(exportText);
+    setSharePlatform(platform);
+    setShareDialogOpen(true);
+  };
+
+  const handleCopyShareText = () => {
+    if (shareTextareaRef.current) {
+      shareTextareaRef.current.select();
+      document.execCommand("copy");
+      toast({
+        title: `Copied for ${sharePlatform}`,
+        description: `Text copied to clipboard for ${sharePlatform} publishing.`,
+      });
+    }
   };
 
   const handleAIGeneration = async () => {
@@ -185,10 +286,22 @@ As Central Asian nations continue to embrace digital transformation, the role of
     }
   };
 
+  // Open current draft as a clean article page
+  const handleViewAsArticle = () => {
+    // Save current draft to localStorage (if not already)
+    handleSave();
+    // Open a new tab with the article view, passing draftId or content as query
+    if (draftId) {
+      window.open(`/article/${draftId}?preview=1`, "_blank");
+    } else {
+      // fallback: open with content in query param
+      window.open(`/article/preview?title=${encodeURIComponent(title)}&content=${encodeURIComponent(content)}`, "_blank");
+    }
+  };
+
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -228,14 +341,48 @@ As Central Asian nations continue to embrace digital transformation, the role of
               <Send className="h-4 w-4 mr-2" />
               Submit for Review
             </Button>
+
+            <Button
+              variant="outline"
+              onClick={handleViewAsArticle}
+              className="font-roboto"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              View as Article
+            </Button>
           </div>
         </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Main Editor */}
           <div className="lg:col-span-3">
             {!isPreview ? (
               <div className="space-y-6">
+                {/* --- Source Link Input --- */}
+                {(!id || id === "new") && (
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2 font-roboto">
+                      Source Link (optional)
+                    </label>
+                    <input
+                      type="url"
+                      value={sourceLink}
+                      onChange={e => setSourceLink(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      placeholder="Paste a website article or YouTube video link..."
+                    />
+                    {sourceLinkType === "website" && (
+                      <p className="text-xs text-blue-600 mt-1 font-roboto">
+                        This link will be treated as a website article.
+                      </p>
+                    )}
+                    {sourceLinkType === "youtube" && (
+                      <p className="text-xs text-red-600 mt-1 font-roboto">
+                        This link will be treated as a YouTube video.
+                      </p>
+                    )}
+                  </div>
+                )}
+                {/* --- End Source Link Input --- */}
                 <div>
                   <label className="block text-sm font-medium text-black mb-2 font-roboto">
                     Article Title
@@ -305,36 +452,13 @@ As Central Asian nations continue to embrace digital transformation, the role of
             ) : (
               <div className="bg-white border border-gray-200 rounded-lg p-8">
                 <h1 className="text-3xl font-bold text-black mb-6 font-poppins">{title}</h1>
-                <div className="prose prose-lg max-w-none font-roboto">
-                  {content.split('\n').map((line, index) => {
-                    if (line.startsWith('# ')) {
-                      return <h1 key={index} className="text-2xl font-bold text-black mb-4 font-poppins">{line.substring(2)}</h1>;
-                    }
-                    if (line.startsWith('## ')) {
-                      return <h2 key={index} className="text-xl font-semibold text-black mb-3 mt-6 font-poppins">{line.substring(3)}</h2>;
-                    }
-                    if (line.startsWith('### ')) {
-                      return <h3 key={index} className="text-lg font-medium text-black mb-2 mt-4 font-poppins">{line.substring(4)}</h3>;
-                    }
-                    if (line.startsWith('#### ')) {
-                      return <h4 key={index} className="text-base font-medium text-black mb-2 mt-3 font-poppins">{line.substring(5)}</h4>;
-                    }
-                    if (line.startsWith('- ')) {
-                      return <li key={index} className="text-gray-700 mb-1">{line.substring(2)}</li>;
-                    }
-                    if (line.startsWith('*') && line.endsWith('*') && line.length > 2) {
-                      return <p key={index} className="text-gray-500 italic text-sm mb-4">{line.substring(1, line.length - 1)}</p>;
-                    }
-                    if (line.trim() === '') {
-                      return <br key={index} />;
-                    }
-                    return <p key={index} className="text-gray-700 mb-4">{line}</p>;
-                  })}
-                </div>
+                <div
+                  className="prose prose-lg max-w-none font-roboto"
+                  dangerouslySetInnerHTML={{ __html: marked(content) }}
+                />
               </div>
             )}
           </div>
-
           {/* Sidebar */}
           <div className="lg:col-span-1">
             <div className="space-y-6">
@@ -375,7 +499,6 @@ As Central Asian nations continue to embrace digital transformation, the role of
                     <Instagram className="h-4 w-4 mr-2" />
                     Instagram
                   </Button>
-                  
                   <Button
                     variant="outline"
                     onClick={() => handleExport("Threads")}
@@ -384,7 +507,6 @@ As Central Asian nations continue to embrace digital transformation, the role of
                     <MessageCircle className="h-4 w-4 mr-2" />
                     Threads
                   </Button>
-                  
                   <Button
                     variant="outline"
                     onClick={() => handleExport("Telegram")}
@@ -393,7 +515,6 @@ As Central Asian nations continue to embrace digital transformation, the role of
                     <TelegramIcon className="h-4 w-4 mr-2" />
                     Telegram
                   </Button>
-                  
                   <Button
                     variant="outline"
                     onClick={() => handleExport("PDF")}
@@ -429,6 +550,41 @@ As Central Asian nations continue to embrace digital transformation, the role of
           </div>
         </div>
       </div>
+      
+      {/* Social Share Dialog */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {`Share to ${sharePlatform}`}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="mb-4">
+            <Textarea
+              ref={shareTextareaRef}
+              value={shareText}
+              onChange={e => setShareText(e.target.value)}
+              rows={8}
+              className="w-full font-roboto"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              onClick={handleCopyShareText}
+              className="bg-black text-white hover:bg-gray-800 font-roboto"
+            >
+              Copy to Clipboard
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShareDialogOpen(false)}
+              className="font-roboto"
+            >
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

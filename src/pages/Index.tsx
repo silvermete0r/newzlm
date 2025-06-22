@@ -207,7 +207,7 @@ const Index = () => {
       <footer className="py-12 px-4 sm:px-6 lg:px-8 border-t border-gray-200">
         <div className="max-w-7xl mx-auto text-center">
           <p className="text-gray-600 font-roboto">
-            © 2024 NewzLM. Empowering journalists through AI-powered collaborative intelligence.
+            © 2025 NewzLM. Empowering journalists through AI-powered collaborative intelligence.
           </p>
         </div>
       </footer>

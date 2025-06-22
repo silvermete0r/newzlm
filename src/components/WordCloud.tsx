@@ -1,5 +1,4 @@
-
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface WordCloudData {
   text: string;
@@ -12,6 +11,24 @@ interface WordCloudProps {
 
 const WordCloud = ({ data }: WordCloudProps) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const [noSenseWords, setNoSenseWords] = useState<string[]>([]);
+
+  useEffect(() => {
+    fetch("/no-sense.txt")
+      .then(res => res.text())
+      .then(txt => {
+        setNoSenseWords(
+          txt
+            .split(/\r?\n/)
+            .map(w => w.trim().toLowerCase())
+            .filter(Boolean)
+        );
+      });
+  }, []);
+
+  const filteredData = data.filter(
+    word => !noSenseWords.includes(word.text.toLowerCase())
+  );
 
   const getRandomPosition = () => ({
     x: Math.random() * 80 + 10, // 10% to 90% of container width
@@ -21,8 +38,9 @@ const WordCloud = ({ data }: WordCloudProps) => {
   const getFontSize = (value: number) => {
     const min = 16;
     const max = 48;
-    const normalized = (value - Math.min(...data.map(d => d.value))) / 
-                      (Math.max(...data.map(d => d.value)) - Math.min(...data.map(d => d.value)));
+    const values = filteredData.map(d => d.value);
+    const normalized = (value - Math.min(...values)) / 
+                      (Math.max(...values) - Math.min(...values) || 1);
     return min + (max - min) * normalized;
   };
 
@@ -31,7 +49,7 @@ const WordCloud = ({ data }: WordCloudProps) => {
       ref={containerRef}
       className="relative h-80 w-full bg-white border border-gray-200 rounded-lg overflow-hidden"
     >
-      {data.map((word, index) => {
+      {filteredData.map((word, index) => {
         const position = getRandomPosition();
         const fontSize = getFontSize(word.value);
         

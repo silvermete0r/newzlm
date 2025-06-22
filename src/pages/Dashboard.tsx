@@ -1,36 +1,77 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { FileText, Settings, Eye, CheckSquare, Plus, Edit, Clock, Users } from "lucide-react";
+import { FileText, Settings, Eye, CheckSquare, Plus, Edit, Clock, Users, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import { Select } from "@/components/ui/select";
+import steppeInfo from "../../the-steppe-info.json";
+
+const LOCAL_STORAGE_KEY = "newzlm:drafts";
+const SUBMITTED_STORAGE_KEY = "newzlm:submitted";
+
+// Google TTS voices (example, you can expand as needed)
+const GOOGLE_TTS_VOICES = [
+  { value: "en-US-Standard-B", label: "English US - Standard B (Male)" },
+  { value: "en-US-Standard-C", label: "English US - Standard C (Female)" },
+  { value: "en-GB-Standard-A", label: "English UK - Standard A (Female)" },
+  { value: "en-GB-Standard-B", label: "English UK - Standard B (Male)" },
+];
+
+const getDefaultPromptSettings = () => ({
+  editorialVoice: steppeInfo.editorialVoice || "en-US-Standard-B",
+  contentGuidelines: steppeInfo.contentGuidelines || "",
+  mediaCompany: steppeInfo.mediaCompany || "",
+  mission: steppeInfo.mission || "",
+  targetAudience: steppeInfo.targetAudience || "",
+  region: steppeInfo.region || "",
+  instagram: steppeInfo.instagram || "",
+  website: steppeInfo.website || ""
+});
 
 const Dashboard = () => {
   const [activeTab, setActiveTab] = useState("drafts");
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [mockDrafts, setMockDrafts] = useState([
-    { id: 1, title: "AI Impact on Central Asian Education", lastEdited: "2 hours ago", status: "draft" },
-    { id: 2, title: "Startup Ecosystem in Kazakhstan", lastEdited: "1 day ago", status: "draft" },
-    { id: 3, title: "Tourism Revival in Uzbekistan", lastEdited: "3 days ago", status: "draft" }
-  ]);
-
-  const [mockModeration, setMockModeration] = useState([
-    { id: 4, title: "Tech Innovation in Kyrgyzstan", submittedBy: "Editor A", status: "pending" },
-    { id: 5, title: "Cultural Preservation Efforts", submittedBy: "Editor B", status: "pending" }
-  ]);
-
+  const [mockDrafts, setMockDrafts] = useState([]);
+  const [mockModeration, setMockModeration] = useState([]);
   const [mockPublished, setMockPublished] = useState([
     { id: 6, title: "Digital Transformation in Central Asia", publishedDate: "Dec 15, 2024", views: "1.2k" },
     { id: 7, title: "Green Energy Initiatives", publishedDate: "Dec 12, 2024", views: "890" }
   ]);
 
-  const [promptSettings, setPromptSettings] = useState({
-    editorialVoice: "Professional, informative, and engaging. Focus on Central Asian perspectives with cultural sensitivity. Use clear, accessible language suitable for diverse audiences.",
-    contentGuidelines: "Prioritize accuracy and fact-checking. Include relevant local context. Maintain neutrality while highlighting regional innovations and developments."
-  });
+  const [promptSettings, setPromptSettings] = useState(getDefaultPromptSettings());
+
+  useEffect(() => {
+    // Load drafts and submitted from localStorage
+    const drafts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
+    setMockDrafts(
+      drafts.map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        lastEdited: d.updated ? new Date(d.updated).toLocaleString() : "",
+        status: "draft",
+      }))
+    );
+    const submitted = JSON.parse(localStorage.getItem(SUBMITTED_STORAGE_KEY) || "[]");
+    setMockModeration(
+      submitted.map((s: any) => ({
+        id: s.id,
+        title: s.title,
+        submittedBy: "You",
+        status: "pending",
+      }))
+    );
+
+    // Set prompt settings from localStorage if exists, else use steppeInfo defaults
+    const saved = localStorage.getItem("newzlm:promptSettings");
+    if (saved) {
+      setPromptSettings(JSON.parse(saved));
+    } else {
+      setPromptSettings(getDefaultPromptSettings());
+    }
+  }, []);
 
   const handleReview = (articleId: number) => {
     navigate(`/editor/${articleId}`);
@@ -40,7 +81,7 @@ const Dashboard = () => {
     });
   };
 
-  const handleApprove = (articleId: number) => {
+  const handleApprove = (articleId: number | string) => {
     const article = mockModeration.find(item => item.id === articleId);
     if (article) {
       // Remove from moderation
@@ -59,6 +100,11 @@ const Dashboard = () => {
       };
       setMockPublished(prev => [publishedArticle, ...prev]);
       
+      // Remove from submitted
+      let submitted = JSON.parse(localStorage.getItem(SUBMITTED_STORAGE_KEY) || "[]");
+      submitted = submitted.filter((s: any) => String(s.id) !== String(articleId));
+      localStorage.setItem(SUBMITTED_STORAGE_KEY, JSON.stringify(submitted));
+      
       toast({
         title: "Article Approved",
         description: `"${article.title}" has been published successfully.`,
@@ -66,14 +112,64 @@ const Dashboard = () => {
     }
   };
 
+  const handleReject = (articleId: number | string) => {
+    
+    setMockModeration(prev => prev.filter(item => item.id !== articleId));
+    
+    let submitted = JSON.parse(localStorage.getItem(SUBMITTED_STORAGE_KEY) || "[]");
+    const rejected = submitted.find((s: any) => String(s.id) === String(articleId));
+    submitted = submitted.filter((s: any) => String(s.id) !== String(articleId));
+    localStorage.setItem(SUBMITTED_STORAGE_KEY, JSON.stringify(submitted));
+    
+    if (rejected) {
+      let drafts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
+      drafts.push({
+        id: rejected.id,
+        title: rejected.title,
+        content: rejected.content,
+        updated: Date.now()
+      });
+      localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(drafts));
+      setMockDrafts(drafts.map((d: any) => ({
+        id: d.id,
+        title: d.title,
+        lastEdited: d.updated ? new Date(d.updated).toLocaleString() : "",
+        status: "draft",
+      })));
+    }
+    toast({
+      title: "Article Rejected",
+      description: "The article has been moved back to drafts.",
+      variant: "destructive",
+    });
+  };
+
   const handleView = (articleId: number) => {
     navigate(`/article/${articleId}`);
   };
 
   const handleSaveSettings = () => {
+    localStorage.setItem("newzlm:promptSettings", JSON.stringify(promptSettings));
     toast({
       title: "Settings Saved",
       description: "AI prompt settings have been updated successfully.",
+    });
+  };
+
+  const deleteDraft = (draftId: string) => {
+    const drafts = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "[]");
+    const updatedDrafts = drafts.filter((d: any) => String(d.id) !== String(draftId));
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(updatedDrafts));
+    setMockDrafts(updatedDrafts.map((d: any) => ({
+      id: d.id,
+      title: d.title,
+      lastEdited: d.updated ? new Date(d.updated).toLocaleString() : "",
+      status: "draft",
+    })));
+    toast({
+      title: "Draft Deleted",
+      description: "Draft has been removed.",
+      variant: "destructive",
     });
   };
 
@@ -130,6 +226,11 @@ const Dashboard = () => {
             <div>
               <h2 className="text-xl font-semibold text-black mb-4 font-poppins">Draft Articles</h2>
               <div className="space-y-4">
+                {mockDrafts.length === 0 && (
+                  <div className="text-center py-8 text-gray-500 font-roboto">
+                    No articles in draft mode.
+                  </div>
+                )}
                 {mockDrafts.map((draft) => (
                   <div key={draft.id} className="bg-white border border-gray-200 rounded-lg p-6 hover:border-black transition-colors">
                     <div className="flex justify-between items-start">
@@ -147,6 +248,15 @@ const Dashboard = () => {
                             Edit
                           </Button>
                         </Link>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="font-roboto text-red-600 border-red-300 hover:bg-red-50"
+                          onClick={() => deleteDraft(draft.id)}
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
                       </div>
                     </div>
                   </div>
@@ -184,6 +294,14 @@ const Dashboard = () => {
                           onClick={() => handleApprove(item.id)}
                         >
                           Approve
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="font-roboto text-red-600 border-red-300 hover:bg-red-50"
+                          onClick={() => handleReject(item.id)}
+                        >
+                          Reject
                         </Button>
                       </div>
                     </div>
@@ -236,19 +354,107 @@ const Dashboard = () => {
                 <div className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-black mb-2 font-roboto">
-                      Editorial Voice & Tone
+                      Media Company Name
                     </label>
-                    <textarea
-                      className="w-full h-32 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
-                      placeholder="Define the tone and style for AI-generated content..."
-                      value={promptSettings.editorialVoice}
-                      onChange={(e) => setPromptSettings(prev => ({
+                    <input
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      placeholder="Enter media company name..."
+                      value={promptSettings.mediaCompany}
+                      onChange={e => setPromptSettings(prev => ({
                         ...prev,
-                        editorialVoice: e.target.value
+                        mediaCompany: e.target.value
                       }))}
                     />
                   </div>
-                  
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2 font-roboto">
+                      Mission
+                    </label>
+                    <textarea
+                      className="w-full h-20 px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      placeholder="Describe your company's mission..."
+                      value={promptSettings.mission}
+                      onChange={e => setPromptSettings(prev => ({
+                        ...prev,
+                        mission: e.target.value
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2 font-roboto">
+                      Target Audience / Region
+                    </label>
+                    <input
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      placeholder="e.g. Young professionals in Central Asia"
+                      value={promptSettings.targetAudience}
+                      onChange={e => setPromptSettings(prev => ({
+                        ...prev,
+                        targetAudience: e.target.value
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2 font-roboto">
+                      Region
+                    </label>
+                    <input
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      placeholder="e.g. Central Asia"
+                      value={promptSettings.region}
+                      onChange={e => setPromptSettings(prev => ({
+                        ...prev,
+                        region: e.target.value
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2 font-roboto">
+                      Instagram Link
+                    </label>
+                    <input
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      placeholder="https://instagram.com/yourcompany"
+                      value={promptSettings.instagram}
+                      onChange={e => setPromptSettings(prev => ({
+                        ...prev,
+                        instagram: e.target.value
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2 font-roboto">
+                      Official Website
+                    </label>
+                    <input
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      placeholder="https://yourcompany.com"
+                      value={promptSettings.website}
+                      onChange={e => setPromptSettings(prev => ({
+                        ...prev,
+                        website: e.target.value
+                      }))}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-black mb-2 font-roboto">
+                      Editorial Voice (Google TTS)
+                    </label>
+                    <select
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-black focus:border-black font-roboto"
+                      value={promptSettings.editorialVoice}
+                      onChange={e => setPromptSettings(prev => ({
+                        ...prev,
+                        editorialVoice: e.target.value
+                      }))}
+                    >
+                      {GOOGLE_TTS_VOICES.map(voice => (
+                        <option key={voice.value} value={voice.value}>
+                          {voice.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                   <div>
                     <label className="block text-sm font-medium text-black mb-2 font-roboto">
                       Content Guidelines
@@ -263,7 +469,6 @@ const Dashboard = () => {
                       }))}
                     />
                   </div>
-                  
                   <Button 
                     className="bg-black text-white hover:bg-gray-800 font-roboto"
                     onClick={handleSaveSettings}

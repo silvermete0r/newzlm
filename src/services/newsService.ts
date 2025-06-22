@@ -35,7 +35,6 @@ if (!NEWS_API_KEY) {
 
 export const fetchTopNews = async (category?: string): Promise<NewsArticle[]> => {
   if (!NEWS_API_KEY) {
-    // Use mock data if API key is missing
     return getMockNews();
   }
   try {
