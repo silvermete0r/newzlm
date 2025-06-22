@@ -159,55 +159,34 @@ export const generateWordCloudData = (articles: NewsArticle[], hackerNews: Hacke
     .map(([text, value]) => ({ text: text.charAt(0).toUpperCase() + text.slice(1), value }));
 };
 
-// AI Generation using LLAMA3
-export const generateArticleWithAI = async (newsArticle: NewsArticle, prompt?: string): Promise<string> => {
+// AI Generation using LLAMA3 (now via local API)
+export const generateArticleWithAI = async (
+  newsArticle: NewsArticle,
+  prompt?: string
+): Promise<{ title: string; content: string }> => {
   try {
-    // This is a placeholder for LLAMA3 integration
-    // User will need to implement actual AI service
-    console.log('Generating article with AI for:', newsArticle.title);
-    
-    const systemPrompt = `You are a professional journalist. Generate a comprehensive article based on the provided news information. 
-    Focus on Central Asian perspectives and regional relevance when possible. 
-    Write in a clear, engaging style suitable for NewzLM publication.`;
-    
-    const userPrompt = prompt || `Write a detailed article based on this news:
-    Title: ${newsArticle.title}
-    Description: ${newsArticle.description}
-    Source: ${newsArticle.source.name}
-    
-    Please expand this into a full article with proper structure, analysis, and relevant context.`;
-    
-    // Placeholder response - replace with actual LLAMA3 API call
-    const generatedContent = `# ${newsArticle.title}
+    // Use local API for article generation
+    const systemPrompt =
+      prompt ||
+      `You are a professional journalist. Generate a comprehensive article based on the provided news information. 
+      Focus on Central Asian perspectives and regional relevance when possible. 
+      Write in a clear, engaging style suitable for NewzLM publication.`;
+    const url = newsArticle.url || "";
 
-${newsArticle.description}
+    const response = await fetch(
+      `http://localhost:8080/generate_article?system_prompt=${encodeURIComponent(systemPrompt)}&url=${encodeURIComponent(url)}`,
+      { method: "GET" }
+    );
+    const data = await response.json();
 
-## Background
-
-This development represents a significant shift in the current landscape, with implications that extend beyond the immediate scope of the original report.
-
-## Analysis
-
-The information provided by ${newsArticle.source.name} suggests several key factors at play:
-
-- **Impact Assessment**: The broader implications of this development
-- **Stakeholder Perspectives**: How different groups are responding
-- **Future Outlook**: What this means for upcoming developments
-
-## Regional Context
-
-From a Central Asian perspective, this news highlights the interconnected nature of global developments and their local impact.
-
-## Conclusion
-
-As this situation continues to evolve, staying informed through reliable sources remains crucial for understanding the full scope of implications.
-
-*This article was generated using NewzLM's AI assistance and is based on reporting from ${newsArticle.source.name}.*`;
-
-    return generatedContent;
+    // The API returns {title, content} or fallback
+    return {
+      title: data.title || newsArticle.title,
+      content: data.content || ""
+    };
   } catch (error) {
-    console.error('Error generating article:', error);
-    throw new Error('Failed to generate article. Please try again.');
+    console.error("Error generating article:", error);
+    throw new Error("Failed to generate article. Please try again.");
   }
 };
 

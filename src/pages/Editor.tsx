@@ -217,16 +217,20 @@ As Central Asian nations continue to embrace digital transformation, the role of
 
     try {
       setIsGenerating(true);
-      
+
       const articleData = sourceArticle || {
         title,
         description: content.substring(0, 200),
-        source: { name: "User Input" }
+        source: { name: "User Input" },
+        url: sourceLink // Use the sourceLink as the url for API
       };
 
-      const generatedContent = await generateArticleWithAI(articleData);
-      setContent(generatedContent);
-      
+      // Call the updated AI API, which returns {title, content}
+      const generated = await generateArticleWithAI(articleData);
+
+      setTitle(generated.title || "");
+      setContent(generated.content || "");
+
       toast({
         title: "AI Generation Complete",
         description: "Article has been generated successfully using LLAMA3.",
