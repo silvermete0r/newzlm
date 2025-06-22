@@ -12,6 +12,7 @@ import json
 load_dotenv()
 
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+LLM_MODEL = "llama-3.1-8b-instant" # llama-3.3-70b-versatile
 
 app = FastAPI()
 
@@ -76,7 +77,7 @@ def transcribe_youtube(url: str) -> str:
     
 def generate_title_llama3(fulltitle: str) -> str:
     completion = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model=LLM_MODEL,
         messages=[
         {
             "role": "user",
@@ -103,7 +104,7 @@ def generate_article_llama3(system_prompt: str, url: str) -> str:
     article_text = read_article(url)
 
     completion = client.chat.completions.create(
-        model="llama-3.1-8b-instant",
+        model=LLM_MODEL,
         messages=[
             {
                 "role": "user",
