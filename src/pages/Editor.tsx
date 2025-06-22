@@ -10,6 +10,7 @@ import { marked } from "marked";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import GoogleTranslateWidget from "@/components/GoogleTranslateWidget";
 
 const LOCAL_STORAGE_KEY = "newzlm:drafts";
 const SUBMITTED_STORAGE_KEY = "newzlm:submitted";
@@ -305,6 +306,7 @@ As Central Asian nations continue to embrace digital transformation, the role of
 
   return (
     <div className="min-h-screen bg-white">
+      <GoogleTranslateWidget />
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex justify-between items-center mb-8">

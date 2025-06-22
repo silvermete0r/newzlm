@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { Select } from "@/components/ui/select";
 import steppeInfo from "../../the-steppe-info.json";
+import GoogleTranslateWidget from "@/components/GoogleTranslateWidget";
 
 const LOCAL_STORAGE_KEY = "newzlm:drafts";
 const SUBMITTED_STORAGE_KEY = "newzlm:submitted";
@@ -182,6 +183,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <GoogleTranslateWidget />
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

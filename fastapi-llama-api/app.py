@@ -1,6 +1,7 @@
 import re
 import requests
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from bs4 import BeautifulSoup
 from youtube_transcript_api import YouTubeTranscriptApi
 from groq import Groq
@@ -13,6 +14,14 @@ load_dotenv()
 client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Or specify your frontend URL for better security
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @app.get("/generate_article")
 def generate_article(system_prompt: str, url: str) -> dict:
@@ -83,6 +92,11 @@ def generate_title_llama3(fulltitle: str) -> str:
     
     generated_title = completion.choices[0].message.content.strip()
 
+    # Clean up the generated title
+    generated_title = re.sub(r'\s+', ' ', generated_title)  # Replace multiple spaces with a single space
+    generated_title = re.sub(r'\n+', ' ', generated_title)  # Replace multiple newlines with a single space
+    generated_title = generated_title.strip()  # Remove leading and trailing whitespace
+
     return generated_title
 
 def generate_article_llama3(system_prompt: str, url: str) -> str:
@@ -104,6 +118,11 @@ def generate_article_llama3(system_prompt: str, url: str) -> str:
     )
 
     generated_content = completion.choices[0].message.content.strip()
+
+    # Clean up the generated content
+    generated_content = re.sub(r'\s+', ' ', generated_content)  # Replace multiple spaces with a single space
+    generated_content = re.sub(r'\n+', '\n', generated_content)  # Replace multiple newlines with a single newline
+    generated_content = generated_content.strip()  # Remove leading and trailing whitespace
 
     return generated_content
     

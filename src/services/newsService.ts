@@ -165,21 +165,40 @@ export const generateArticleWithAI = async (
   prompt?: string
 ): Promise<{ title: string; content: string }> => {
   try {
-    // Use local API for article generation
     const systemPrompt =
       prompt ||
       `You are a professional journalist. Generate a comprehensive article based on the provided news information. 
       Focus on Central Asian perspectives and regional relevance when possible. 
       Write in a clear, engaging style suitable for NewzLM publication.`;
-    const url = newsArticle.url || "";
 
-    const response = await fetch(
-      `http://localhost:8080/generate_article?system_prompt=${encodeURIComponent(systemPrompt)}&url=${encodeURIComponent(url)}`,
-      { method: "GET" }
-    );
-    const data = await response.json();
+    let url = "";
+    if (newsArticle.url && typeof newsArticle.url === "string" && newsArticle.url.startsWith("http")) {
+      url = newsArticle.url;
+    } else if (
+      newsArticle.content &&
+      typeof newsArticle.content === "string" &&
+      newsArticle.content.startsWith("http")
+    ) {
+      url = newsArticle.content;
+    }
 
-    // The API returns {title, content} or fallback
+    const queryUrl = `http://localhost:8000/generate_article?system_prompt=${encodeURIComponent(systemPrompt)}&url=${encodeURIComponent(url)}`;
+    console.log("[AI DEBUG] Query URL:", queryUrl);
+
+    const response = await fetch(queryUrl, { method: "GET" });
+    console.log("[AI DEBUG] Response status:", response.status, response.statusText);
+
+    const text = await response.text();
+    console.log("[AI DEBUG] Response text:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (jsonErr) {
+      console.error("[AI DEBUG] Failed to parse JSON:", jsonErr);
+      throw new Error("AI backend did not return valid JSON. See console for details.");
+    }
+
     return {
       title: data.title || newsArticle.title,
       content: data.content || ""

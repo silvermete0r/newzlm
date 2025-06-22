@@ -3,6 +3,7 @@ import { Clock, Share, Bookmark, Eye, Volume2, Pause, Play, SkipForward, SkipBac
 import { Button } from "@/components/ui/button";
 import Header from "@/components/Header";
 import { useEffect, useState, useRef } from "react";
+import GoogleTranslateWidget from "@/components/GoogleTranslateWidget";
 
 const LOCAL_STORAGE_KEY = "newzlm:drafts";
 const PROMPT_SETTINGS_KEY = "newzlm:promptSettings";
@@ -117,6 +118,7 @@ const ArticlePage = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <GoogleTranslateWidget />
       <Header />
       <article className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <header className="mb-8">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { TrendingUp, Globe, Users, BookOpen, Plane, Palette, Film, Microscope, Heart, Leaf, Sparkles } from "lucide-react";
@@ -6,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import WordCloud from "@/components/WordCloud";
 import NewsCard from "@/components/NewsCard";
 import Header from "@/components/Header";
+import GoogleTranslateWidget from "@/components/GoogleTranslateWidget";
 import { fetchTopNews, fetchHackerNews, generateWordCloudData, NewsArticle, HackerNewsItem } from "@/services/newsService";
 
 const categories = [
@@ -73,6 +73,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <GoogleTranslateWidget />
       <Header />
       
       {/* Hero Section */}

@@ -1,10 +1,10 @@
-
 import { useParams } from "react-router-dom";
 import { useState } from "react";
 import { Filter, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NewsCard from "@/components/NewsCard";
 import Header from "@/components/Header";
+import GoogleTranslateWidget from "@/components/GoogleTranslateWidget";
 
 const CategoryPage = () => {
   const { category } = useParams();
@@ -54,6 +54,7 @@ const CategoryPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <GoogleTranslateWidget />
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

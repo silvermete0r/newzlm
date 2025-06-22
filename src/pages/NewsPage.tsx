@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Search, Filter, TrendingUp, Calendar, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import NewsCard from "@/components/NewsCard";
 import Header from "@/components/Header";
+import GoogleTranslateWidget from "@/components/GoogleTranslateWidget";
 import { fetchTopNews, searchNews, NewsArticle } from "@/services/newsService";
 import { useToast } from "@/hooks/use-toast";
 
@@ -119,6 +119,7 @@ const NewsPage = () => {
 
   return (
     <div className="min-h-screen bg-white">
+      <GoogleTranslateWidget />
       <Header />
       
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
