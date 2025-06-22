@@ -25,7 +25,7 @@ export interface HackerNewsItem {
 }
 
 // NewsAPI configuration
-const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY; // Use Vite environment variable
+const NEWS_API_KEY = import.meta.env.VITE_NEWS_API_KEY;
 const NEWS_API_BASE_URL = 'https://newsapi.org/v2';
 
 // Optionally, throw if NEWS_API_KEY is not set
@@ -34,6 +34,10 @@ if (!NEWS_API_KEY) {
 }
 
 export const fetchTopNews = async (category?: string): Promise<NewsArticle[]> => {
+  if (!NEWS_API_KEY) {
+    // Use mock data if API key is missing
+    return getMockNews();
+  }
   try {
     const endpoint = category && category !== 'all' 
       ? `${NEWS_API_BASE_URL}/top-headlines`
@@ -72,6 +76,10 @@ export const fetchTopNews = async (category?: string): Promise<NewsArticle[]> =>
 };
 
 export const searchNews = async (query: string): Promise<NewsArticle[]> => {
+  if (!NEWS_API_KEY) {
+    // Use mock data if API key is missing
+    return getMockNews();
+  }
   try {
     const response = await axios.get(`${NEWS_API_BASE_URL}/everything`, {
       params: {
@@ -225,5 +233,45 @@ const getMockNews = (): NewsArticle[] => [
     publishedAt: new Date(Date.now() - 3600000).toISOString(),
     source: { name: 'Education Today' },
     category: 'Education'
+  },
+  {
+    id: '3',
+    title: 'Renewable Energy Projects Expand in Turkmenistan',
+    description: 'Turkmenistan invests in solar and wind energy to diversify its energy sector.',
+    url: 'https://example.com/renewable-turkmenistan',
+    urlToImage: '/placeholder.svg',
+    publishedAt: new Date(Date.now() - 7200000).toISOString(),
+    source: { name: 'Energy News' },
+    category: 'Energy'
+  },
+  {
+    id: '4',
+    title: 'Uzbekistan Hosts Regional Tech Conference',
+    description: 'Leaders from Central Asia gather to discuss digital transformation and innovation.',
+    url: 'https://example.com/uzbekistan-tech-conference',
+    urlToImage: '/placeholder.svg',
+    publishedAt: new Date(Date.now() - 10800000).toISOString(),
+    source: { name: 'Central Asia Times' },
+    category: 'Technology'
+  },
+  {
+    id: '5',
+    title: 'Kazakhstan Launches New Space Satellite',
+    description: 'The new satellite aims to improve telecommunications and internet access.',
+    url: 'https://example.com/kazakhstan-satellite',
+    urlToImage: '/placeholder.svg',
+    publishedAt: new Date(Date.now() - 14400000).toISOString(),
+    source: { name: 'Space Daily' },
+    category: 'Science'
+  },
+  {
+    id: '6',
+    title: 'Tajikistan Improves Water Management Systems',
+    description: 'Modern irrigation and water-saving technologies introduced in rural areas.',
+    url: 'https://example.com/tajikistan-water',
+    urlToImage: '/placeholder.svg',
+    publishedAt: new Date(Date.now() - 18000000).toISOString(),
+    source: { name: 'Agri News' },
+    category: 'Environment'
   }
 ];
