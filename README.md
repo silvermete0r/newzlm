@@ -4,7 +4,7 @@ NewzLM is a web-based AI assistant platform designed to empower journalists thro
 
 [![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/silvermete0r/newzlm)
 
-*21-22 June, 2025 |  Team: Yan LeCun Fan Club | Meta Llama IdeaThon 2025*
+*21-22 June, 2025 |  Team: Yann LeCun Fan Club | Meta Llama IdeaThon 2025*
 
 **Local Development**
 
